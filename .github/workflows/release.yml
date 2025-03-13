@@ -1,0 +1,60 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Build for macOS (arm64)
+      run: dotnet build --configuration Release --runtime osx-arm64 --no-restore
+      working-directory: JwtGen
+
+    - name: Publish
+      run: dotnet publish --configuration Release --runtime osx-arm64 --no-build --output ./publish/osx-arm64
+      working-directory: JwtGen
+
+    - name: Zip macOS (arm64) publish
+      run: zip -j publish/osx-arm64.zip publish/osx-arm64/*
+      working-directory: JwtGen
+
+    - name: Build for Windows (x64)
+      run: dotnet build --configuration Release --runtime win-x64 --no-restore
+      working-directory: JwtGen
+
+    - name: Publish for Windows (x64)
+      run: dotnet publish --configuration Release --runtime win-x64 --no-build --output ./publish/win-x64
+      working-directory: JwtGen
+
+    - name: Zip Windows (x64) publish
+      run: zip -j publish/win-x64.zip publish/win-x64/*
+      working-directory: JwtGen
+
+    - name: Create and Upload Release 
+      uses: softprops/action-gh-release@v2
+      with: 
+        files: |
+          ./JwtGen/publish/osx-arm64.zip
+          ./JwtGen/publish/win-x64.zip
+        tag_name: v0.9.0
+        release_name: Release v0.9.0
+        draft: false 
+        prerelease: true
